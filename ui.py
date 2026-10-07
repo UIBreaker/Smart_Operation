@@ -70,16 +70,35 @@ FONT_BODY = ("Segoe UI", 9)
 FONT_BTN = ("Segoe UI", 9, "bold")
 
 
+def get_resource_path(relative_path: str) -> str:
+    """Lấy đường dẫn tài nguyên chuẩn xác kể cả khi chạy từ mã nguồn hoặc file .exe đóng gói."""
+    if hasattr(sys, "_MEIPASS"):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.abspath("."), relative_path)
+
+
 def create_tray_icon_image():
-    """Tạo biểu tượng System Tray phong cách Vintage Hardware (64x64 RGBA)."""
+    """Tạo biểu tượng System Tray từ ảnh chú vẹt xanh gõ phím cơ với bo tròn mềm mại."""
+    icon_path = get_resource_path("app_icon.png")
+    if os.path.exists(icon_path):
+        try:
+            img = Image.open(icon_path).convert("RGBA")
+            size = (64, 64)
+            img = img.resize(size, Image.Resampling.LANCZOS)
+            mask = Image.new("L", size, 0)
+            draw = ImageDraw.Draw(mask)
+            draw.rounded_rectangle([(0, 0), (63, 63)], radius=14, fill=255)
+            output = Image.new("RGBA", size, (0, 0, 0, 0))
+            output.paste(img, (0, 0), mask=mask)
+            return output
+        except Exception:
+            pass
+
+    # Fallback dự phòng
     img = Image.new("RGBA", (64, 64), color=(0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
-    # Vòng tròn ngoài kem
     draw.ellipse([4, 4, 60, 60], fill="#ece7de", outline="#ded7cb", width=3)
-    # Nút bấm đỏ bên trong
     draw.ellipse([14, 14, 50, 50], fill="#d94f4f", outline="#a42a2a", width=2)
-    # Chấm trắng điểm nhấn
-    draw.ellipse([26, 26, 38, 38], fill="#ffffff")
     return img
 
 
@@ -189,6 +208,21 @@ class SmartOperationApp:
         self.root.geometry("900x780")
         self.root.minsize(840, 700)
         self.root.configure(bg=VINTAGE_BG)
+
+        # Cài đặt biểu tượng ứng dụng chú vẹt gõ phím cơ
+        ico_path = get_resource_path("app_icon.ico")
+        png_path = get_resource_path("app_icon.png")
+        if os.path.exists(ico_path):
+            try:
+                self.root.iconbitmap(ico_path)
+            except Exception:
+                pass
+        elif os.path.exists(png_path):
+            try:
+                self._app_icon_tk = tk.PhotoImage(file=png_path)
+                self.root.iconphoto(True, self._app_icon_tk)
+            except Exception:
+                pass
 
         # Khởi tạo Core MacroManager
         self.manager = MacroManager()
