@@ -126,26 +126,67 @@ def test_abort_flag_responsiveness():
     print(f"   [PASS] Phản hồi dừng khẩn cấp siêu tốc: {elapsed*1000:.1f}ms.")
 
 
+def test_normalize_hotkey():
+    print("-> Kiểm tra chuẩn hóa tổ hợp phím (normalize_hotkey)...")
+    from core import normalize_hotkey
+    assert normalize_hotkey("F8") == "<f8>"
+    assert normalize_hotkey("F9") == "<f9>"
+    assert normalize_hotkey("Ctrl+F1") == "<ctrl>+<f1>"
+    assert normalize_hotkey("Alt+1") == "<alt>+1"
+    assert normalize_hotkey("Ctrl+Shift+K") == "<ctrl>+<shift>+k"
+    assert normalize_hotkey("ESC") == "<esc>"
+    print("   [PASS] Chuẩn hóa phím tắt hoàn toàn chính xác.")
+
+
+def test_script_profile_library():
+    print("-> Kiểm tra quản lý đa kịch bản (ScriptProfile & Library)...")
+    from core import ScriptProfile, MacroStorage
+    actions = [MacroAction("mouse_click", delay=0.1, x=200, y=300, button="left", pressed=True)]
+    p1 = ScriptProfile(name="Ký số HIS", hotkey="F9", actions=actions, speed=1.2)
+    p2 = ScriptProfile(name="Điền mẫu khám", hotkey="F10", actions=actions, speed=1.0)
+    
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:
+        tmp_path = tmp.name
+
+    try:
+        MacroStorage.save_library([p1, p2], tmp_path, settings={"hotkey_record": "F8", "hotkey_panic": "ESC"})
+        loaded, settings = MacroStorage.load_library(tmp_path)
+        assert len(loaded) == 2, f"Kỳ vọng 2 kịch bản, nhận: {len(loaded)}"
+        assert loaded[0].name == "Ký số HIS"
+        assert loaded[0].hotkey == "F9"
+        assert loaded[1].name == "Điền mẫu khám"
+        assert loaded[1].hotkey == "F10"
+        assert settings.get("hotkey_record") == "F8"
+        print("   [PASS] Quản lý đa kịch bản lưu & nạp toàn vẹn dữ liệu.")
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+
+
 def test_macro_manager_state_machine():
     print("-> Kiểm tra máy trạng thái MacroManager (State Machine)...")
     from core import MacroManager
-    mgr = MacroManager()
+    mgr = MacroManager(library_path="test_temp_library.json")
     assert mgr.state == MacroManager.STATE_IDLE
 
-    # Mock action list
-    mgr.actions = [
+    # Mock action list on active profile
+    active = mgr.get_active_profile()
+    assert active is not None
+    active.actions = [
         MacroAction("key_press", delay=0.05, key="Key.enter"),
         MacroAction("key_release", delay=0.01, key="Key.enter"),
     ]
 
     # Test Play & Emergency Stop
-    mgr.start_playing(speed=1.0, loop_count=10, loop_delay=1.0)
+    mgr.start_playing_active()
     assert mgr.state == MacroManager.STATE_PLAYING, f"Trạng thái kỳ vọng là PLAYING, nhận: {mgr.state}"
     time.sleep(0.02)
     mgr.stop_playing()
     # Chờ thread kết thúc
     time.sleep(0.05)
     assert mgr.state == MacroManager.STATE_IDLE, f"Trạng thái kỳ vọng là IDLE sau dừng, nhận: {mgr.state}"
+    if os.path.exists("test_temp_library.json"):
+        os.remove("test_temp_library.json")
     print("   [PASS] MacroManager chuyển đổi trạng thái chính xác.")
 
 
@@ -156,5 +197,7 @@ if __name__ == "__main__":
     test_macro_action_roundtrip()
     test_storage_json_roundtrip()
     test_abort_flag_responsiveness()
+    test_normalize_hotkey()
+    test_script_profile_library()
     test_macro_manager_state_machine()
     print("================ TẤT CẢ KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG! ================")

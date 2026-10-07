@@ -1,55 +1,50 @@
-# 🎛️ Smart Operation // [Vintage Hardware Edition]
+# 🎛️ Smart Operation // [v0.4.1 System Tray & Multi-Script Edition]
 
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/)
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-lightgrey.svg)](https://www.microsoft.com/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Release](https://img.shields.io/badge/release-v0.4.1-success.svg)](https://github.com/UIBreaker/Smart_Operation/releases/tag/v0.4.1)
 [![Style](https://img.shields.io/badge/style-Vintage%20Matte%20Cream-d9534f.svg)](#)
 
+---
 
-## ⚡ Tính Năng Cốt Lõi
+## 🌟 Tính Năng Nổi Bật (v0.4.1)
 
-1. **Học thao tác thông minh (Smart Learn)**:
-   - Ghi lại các cú click chuột (trái, phải, đúp), phím bấm (text, Tab, Enter, Ctrl,...).
-   - **Tối ưu cho HIS**: Tự động lọc bỏ các di chuyển chuột thừa (mouse movement jitter), chỉ giữ lại điểm click và phím gõ chính xác, giúp kịch bản chạy dứt khoát và mượt mà.
-   - **Chuẩn 100% DPI Scaling**: Tích hợp Windows Per-monitor DPI Awareness, không bao giờ bị click lệch tọa độ trên màn hình 125% hay 150%.
-2. **Phím tắt toàn cục (Global Hotkeys)**:
-   - `[F8]`: Bắt đầu / Dừng học thao tác (nhấn trực tiếp từ màn hình HIS).
-   - `[F9]`: Chạy kịch bản tự động.
-   - `[ESC]`: **Dừng khẩn cấp ngay lập tức (Panic Stop)** — nhả toàn bộ phím/chuột và ngắt luồng dưới 50ms.
-3. **Quản lý kịch bản linh hoạt**:
-   - Tùy chỉnh tốc độ: `0.5x`, `0.8x (An toàn)`, `1.0x (Chuẩn)`, `1.25x`, `1.5x`, `2.0x`.
-   - Thiết lập số lần lặp và thời gian nghỉ giữa các vòng.
-   - Cho phép chỉnh sửa thời gian chờ (delay) hoặc xóa bước thừa trực tiếp trên bảng.
-   - Lưu & Nạp kịch bản dạng file `.json` dùng lại lâu dài hoặc chia sẻ cho đồng nghiệp.
+1. **🔕 Chạy ngầm dưới Khay hệ thống (System Tray)**:
+   - Ứng dụng tự động thu gọn xuống khay hệ thống cạnh đồng hồ Windows khi bấm nút **[X]** hoặc **[🔻 THU VÀO KHAY]**.
+   - Phím tắt kích hoạt vẫn hoạt động 100% trong nền ngầm mà không cần mở cửa sổ.
+
+2. **🗂️ Quản lý Đa kịch bản (Multi-Script Profiles)**:
+   - Tạo không giới hạn các kịch bản với tên riêng và tổ hợp phím riêng (VD: Kịch bản 1 -> `F9`, Kịch bản 2 -> `F10`, Kịch bản 3 -> `F11`,...).
+   - Nhấn tổ hợp phím nào thì bot tự động thực hiện ngay kịch bản tương ứng!
+
+3. **⚙️ Tùy biến Tổ hợp phím trong Cài đặt**:
+   - Tùy chỉnh phím Học thao tác (mặc định: `F8`).
+   - Tùy chỉnh phím Dừng khẩn cấp (mặc định: `ESC`).
+   - Tùy chọn thu nhỏ xuống khay khi bấm nút đóng [X].
+
+4. **⚡ Lọc thông minh & Chuẩn 100% DPI Scaling**:
+   - Tự động lọc bỏ các di chuyển chuột thừa, giữ lại các điểm click và phím gõ chính xác.
+   - Hỗ trợ Windows Per-monitor DPI Awareness (không lệch chuột trên màn hình 125% - 150%).
 
 ---
 
 ## 🚀 Hướng Dẫn Cài Đặt & Sử Dụng
 
-### 1. Tải về máy
-Clone repository về máy tính:
+### 1. Tải về file chạy sẵn (Khuyên dùng)
+Tải bản cài đặt đóng gói sẵn từ mục [Releases v0.4.1](https://github.com/UIBreaker/Smart_Operation/releases/tag/v0.4.1):
+- **`SmartOperation.exe`**: Tải về nhấp đúp là chạy ngay (không cần cài Python).
+- **`SmartOperation-v0.4.1-Windows.zip`**: Gói nén đầy đủ.
+
+### 2. Chạy từ mã nguồn Python
 ```bash
 git clone https://github.com/UIBreaker/Smart_Operation.git
 cd Smart_Operation
-```
-Hoặc tải file thực thi đóng gói sẵn từ mục [Releases](https://github.com/UIBreaker/Smart_Operation/releases).
-
-### 2. Cài đặt thư viện
-Yêu cầu Python 3.8 trở lên:
-```bash
 pip install -r requirements.txt
+python main.py
 ```
-
-### 3. Khởi chạy
-- **Cách 1 (Nhanh nhất)**: Nhấp đúp chuột vào file **`run.bat`**.
-- **Cách 2**: Chạy từ dòng lệnh:
-  ```bash
-  python main.py
-  ```
 
 ---
-
-
 
 ## 📄 Bản Quyền (License)
 Dự án được phân phối dưới giấy phép **MIT License**.

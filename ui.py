@@ -1,7 +1,10 @@
 """
-Smart Operation - Retro Hardware / Neumorphic Matte Edition
-Thiết kế chủ đạo theo phong cách Vintage Cream Hardware (Braun / Dieter Rams / Teenage Engineering)
-Bao gồm các khối: SLIDE (Điều khiển & Trạng thái), PRESS (Nút bấm 3D Matte), SCROLL (Bảng kịch bản)
+Smart Operation - Retro Hardware / Neumorphic Matte Edition (v0.4.1)
+Tính năng mới v0.4.1:
+- Chạy ngầm dưới Khay hệ thống Windows (System Tray / Notification Area), phím tắt hoạt động 100% khi ẩn.
+- Quản lý đa kịch bản (Multi-Script Profiles): Mỗi kịch bản có tên riêng và tổ hợp phím kích hoạt riêng (F9, F10, F11, Ctrl+F1,...).
+- Bảng Cài đặt tổ hợp phím (Hotkey Settings) cho phím Học, phím Dừng khẩn cấp và thu nhỏ xuống khay.
+- Giữ trọn ngôn ngữ thiết kế Vintage Cream Hardware (SLIDE - PRESS - SCROLL).
 """
 
 import os
@@ -10,6 +13,8 @@ import time
 import threading
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog, simpledialog
+from PIL import Image, ImageDraw
+import pystray
 
 if sys.platform == "win32":
     try:
@@ -21,23 +26,24 @@ if sys.platform == "win32":
 from core import (
     enable_dpi_awareness,
     MacroAction,
+    ScriptProfile,
     MacroManager,
     MacroStorage,
+    normalize_hotkey,
     play_sound,
 )
 
 # ==========================================
-# RETRO HARDWARE COLOR PALETTE (From Reference Image)
+# RETRO HARDWARE COLOR PALETTE (Braun / Dieter Rams)
 # ==========================================
-VINTAGE_BG = "#ece7de"             # Nền kem cổ điển tổng thể (Vintage Cream)
-VINTAGE_CARD_BG = "#f6f3ec"        # Nền thẻ bề mặt mờ nhạt (Porcelain Matte)
+VINTAGE_BG = "#ece7de"             # Nền kem cổ điển tổng thể
+VINTAGE_CARD_BG = "#f6f3ec"        # Nền thẻ bề mặt mờ nhạt
 VINTAGE_CARD_BORDER = "#ded7cb"    # Viền thẻ nổi nhẹ
 VINTAGE_INNER_GROOVE = "#e4ded4"   # Rãnh thụt / khe trượt
-VINTAGE_TEXT_HEAD = "#3e3a35"      # Chữ tiêu đề tối màu phong cách Dieter Rams
+VINTAGE_TEXT_HEAD = "#3e3a35"      # Chữ tiêu đề tối màu
 VINTAGE_TEXT_BODY = "#585249"      # Chữ thông tin chung
 VINTAGE_TEXT_MUTED = "#8c8579"     # Chữ phụ / ghi chú
 
-# Bảng màu nút 3D Matte (Phần "PRESS" trong ảnh tham khảo)
 BTN_YELLOW_TOP = "#e8b056"
 BTN_YELLOW_BOT = "#b88232"
 BTN_YELLOW_TXT = "#433214"
@@ -58,21 +64,34 @@ BTN_BEIGE_TOP = "#e3ded4"
 BTN_BEIGE_BOT = "#bcb5a7"
 BTN_BEIGE_TXT = "#4d4841"
 
-FONT_HEADER = ("Trebuchet MS", 13, "bold")
-FONT_TITLE = ("Trebuchet MS", 10, "bold")
+FONT_HEADER = ("Trebuchet MS", 12, "bold")
+FONT_TITLE = ("Trebuchet MS", 9, "bold")
 FONT_BODY = ("Segoe UI", 9)
 FONT_BTN = ("Segoe UI", 9, "bold")
 
 
+def create_tray_icon_image():
+    """Tạo biểu tượng System Tray phong cách Vintage Hardware (64x64 RGBA)."""
+    img = Image.new("RGBA", (64, 64), color=(0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    # Vòng tròn ngoài kem
+    draw.ellipse([4, 4, 60, 60], fill="#ece7de", outline="#ded7cb", width=3)
+    # Nút bấm đỏ bên trong
+    draw.ellipse([14, 14, 50, 50], fill="#d94f4f", outline="#a42a2a", width=2)
+    # Chấm trắng điểm nhấn
+    draw.ellipse([26, 26, 38, 38], fill="#ffffff")
+    return img
+
+
 class Retro3DButton(tk.Canvas):
-    """Nút bấm 3D bề mặt mờ (Matte) có hiệu ứng lún xuống khi nhấn (chính xác như ảnh tham khảo)."""
+    """Nút bấm 3D bề mặt mờ (Matte) có độ nảy cơ học khi nhấp."""
     def __init__(
         self,
         parent,
         text="",
         command=None,
-        width=140,
-        height=40,
+        width=130,
+        height=38,
         top_color=BTN_YELLOW_TOP,
         bot_color=BTN_YELLOW_BOT,
         text_color=BTN_YELLOW_TXT,
@@ -129,11 +148,8 @@ class Retro3DButton(tk.Canvas):
             b_col = self.bot_color
             txt_col = self.text_color
 
-        # Phần gờ đổ bóng 3D phía dưới (Bottom Bevel)
         self._draw_round_rect(2, 2, w - 2, h - 2, r, fill=b_col, outline="")
-        # Bề mặt nút phía trên (Top Surface)
         self._draw_round_rect(2, 2 + offset, w - 2, h - 6 + offset, r, fill=t_col, outline="")
-        # Chữ in chìm hoặc nổi
         self.create_text(
             w // 2,
             (h // 2 - 2) + offset,
@@ -169,29 +185,30 @@ class Retro3DButton(tk.Canvas):
 class SmartOperationApp:
     def __init__(self, root: tk.Tk):
         self.root = root
-        self.root.title("SMART OPERATION // RETRO HARDWARE CONSOLE [v0.2.0]")
-        self.root.geometry("880x750")
-        self.root.minsize(820, 680)
+        self.root.title("SMART OPERATION // RETRO HARDWARE CONSOLE [v0.4.1]")
+        self.root.geometry("900x780")
+        self.root.minsize(840, 700)
         self.root.configure(bg=VINTAGE_BG)
 
         # Khởi tạo Core MacroManager
         self.manager = MacroManager()
 
-        # Biến trạng thái
+        # Biến cấu hình giao diện
         self.speed_var = tk.StringVar(value="1.0x")
         self.loop_count_var = tk.StringVar(value="1")
         self.loop_delay_var = tk.StringVar(value="1.0")
-        self.ignore_movement_var = tk.BooleanVar(value=True)  # Mặc định lọc bỏ chuột thừa
+        self.ignore_movement_var = tk.BooleanVar(value=True)
         self.countdown_var = tk.BooleanVar(value=True)
 
         self.countdown_timer = None
-        self.current_file_path = None
+        self.tray_icon: Optional[pystray.Icon] = None
 
-        # Kết nối Callbacks
+        # Kết nối Callbacks từ Core Manager
         self.manager.on_state_changed = self._on_manager_state_changed
         self.manager.on_action_recorded = self._on_action_recorded
         self.manager.on_step = self._on_player_step
         self.manager.on_play_finished = self._on_player_finished
+        self.manager.on_profile_triggered = self._on_profile_triggered
 
         # Kích hoạt DPI Awareness
         enable_dpi_awareness()
@@ -200,9 +217,14 @@ class SmartOperationApp:
         self._setup_retro_styles()
         self._build_ui()
 
-        # Lắng nghe Hotkey toàn cầu (F8, F9, ESC)
+        # Khởi động phím tắt toàn cục
         self.manager.start_global_hotkeys()
-        self.root.protocol("WM_DELETE_WINDOW", self._on_close)
+
+        # Khởi động Khay hệ thống (System Tray)
+        self._setup_system_tray()
+
+        # Bắt sự kiện đóng cửa sổ
+        self.root.protocol("WM_DELETE_WINDOW", self._on_window_close)
 
     def _setup_retro_styles(self):
         style = ttk.Style()
@@ -211,7 +233,6 @@ class SmartOperationApp:
         except Exception:
             pass
 
-        # Cấu hình Treeview phong cách thiết bị phần cứng kem cổ điển
         style.configure(
             "RetroHardware.Treeview",
             background="#faf8f3",
@@ -243,11 +264,9 @@ class SmartOperationApp:
         )
 
     def _create_section_card(self, parent, section_name: str) -> tk.Frame:
-        """Tạo một khối thẻ phần cứng kem bo viền có tiêu đề (SLIDE / PRESS / SCROLL)."""
         container = tk.Frame(parent, bg=VINTAGE_BG)
-        container.pack(fill=tk.X, padx=16, pady=4)
+        container.pack(fill=tk.X, padx=16, pady=3)
 
-        # Tiêu đề khối (Chữ in hoa phong cách retro công nghiệp)
         lbl_sec = tk.Label(
             container,
             text=section_name,
@@ -255,154 +274,161 @@ class SmartOperationApp:
             bg=VINTAGE_BG,
             fg=VINTAGE_TEXT_HEAD,
         )
-        lbl_sec.pack(anchor="w", padx=4, pady=(2, 3))
+        lbl_sec.pack(anchor="w", padx=4, pady=(1, 2))
 
-        # Thẻ bo viền bề mặt mờ
         card = tk.Frame(
             container,
             bg=VINTAGE_CARD_BG,
             highlightbackground=VINTAGE_CARD_BORDER,
             highlightthickness=2,
-            padx=14,
-            pady=10,
+            padx=12,
+            pady=8,
         )
         card.pack(fill=tk.BOTH, expand=True)
         return card
 
     def _build_ui(self):
-        # 0. MAIN HEADER (Tên ứng dụng)
+        # 0. MAIN HEADER
         top_bar = tk.Frame(self.root, bg=VINTAGE_BG)
-        top_bar.pack(fill=tk.X, padx=20, pady=(12, 4))
+        top_bar.pack(fill=tk.X, padx=20, pady=(8, 2))
 
         tk.Label(
             top_bar,
             text="SMART OPERATION",
-            font=("Trebuchet MS", 15, "bold"),
+            font=("Trebuchet MS", 14, "bold"),
             bg=VINTAGE_BG,
             fg=VINTAGE_TEXT_HEAD,
         ).pack(side=tk.LEFT)
 
         tk.Label(
             top_bar,
-            text="HIS AUTOMATION CONSOLE // v0.2.0",
+            text="HIS AUTOMATION CONSOLE // v0.4.1",
             font=("Segoe UI", 9, "bold"),
             bg=VINTAGE_BG,
             fg=VINTAGE_TEXT_MUTED,
-        ).pack(side=tk.RIGHT)
+        ).pack(side=tk.LEFT, padx=(10, 0))
+
+        # Nút cài đặt & thu nhỏ khay ở góc trên bên phải
+        Retro3DButton(
+            top_bar,
+            text="⚙️ CÀI ĐẶT PHÍM TẮT",
+            width=140,
+            height=30,
+            top_color=BTN_BEIGE_TOP,
+            bot_color=BTN_BEIGE_BOT,
+            text_color=BTN_BEIGE_TXT,
+            command=self._cmd_open_settings,
+        ).pack(side=tk.RIGHT, padx=(4, 0))
+
+        Retro3DButton(
+            top_bar,
+            text="🔻 THU VÀO KHAY",
+            width=120,
+            height=30,
+            top_color=BTN_BLUE_TOP,
+            bot_color=BTN_BLUE_BOT,
+            text_color=BTN_BLUE_TXT,
+            command=self._hide_to_tray,
+        ).pack(side=tk.RIGHT, padx=(4, 0))
 
         # ==========================================
-        # 1. KHỐI "SLIDE" (ĐIỀU KHIỂN & TRẠNG THÁI)
+        # 1. KHỐI "SLIDE" (ĐIỀU KHIỂN & ĐA KỊCH BẢN)
         # ==========================================
         slide_card = self._create_section_card(self.root, "SLIDE")
 
-        # Rãnh hiển thị trạng thái (HUD Grooved Track)
+        # Rãnh HUD trạng thái
         self.hud_track = tk.Frame(
             slide_card,
             bg=VINTAGE_INNER_GROOVE,
             highlightbackground=VINTAGE_CARD_BORDER,
             highlightthickness=1,
             padx=10,
-            pady=6,
+            pady=5,
         )
-        self.hud_track.pack(fill=tk.X, pady=(0, 8))
+        self.hud_track.pack(fill=tk.X, pady=(0, 6))
 
         self.hud_status_lbl = tk.Label(
             self.hud_track,
-            text="● STATUS: SẴN SÀNG (READY)   │   [F8] HỌC THAO TÁC   │   [F9] CHẠY BOT   │   [ESC] DỪNG KHẨN CẤP",
+            text="● STATUS: SẴN SÀNG (READY)   │   HỌC: [F8]   │   DỪNG KHẨN CẤP: [ESC]",
             font=("Trebuchet MS", 9, "bold"),
             bg=VINTAGE_INNER_GROOVE,
             fg=BTN_GREEN_TXT,
         )
         self.hud_status_lbl.pack(anchor="center")
 
-        # Rãnh thanh trượt cấu hình (Speed & Options)
+        # Hàng chọn Kịch bản (Script Profile Selector)
+        profile_row = tk.Frame(slide_card, bg=VINTAGE_CARD_BG)
+        profile_row.pack(fill=tk.X, pady=(0, 6))
+
+        tk.Label(
+            profile_row,
+            text="📋 KỊCH BẢN HIỆN TẠI:",
+            font=FONT_TITLE,
+            bg=VINTAGE_CARD_BG,
+            fg=VINTAGE_TEXT_HEAD,
+        ).pack(side=tk.LEFT, padx=(0, 6))
+
+        self.profile_combo_var = tk.StringVar()
+        self.profile_combo = ttk.Combobox(
+            profile_row,
+            textvariable=self.profile_combo_var,
+            width=36,
+            state="readonly",
+            font=("Segoe UI", 9, "bold"),
+        )
+        self.profile_combo.pack(side=tk.LEFT, padx=(0, 8))
+        self.profile_combo.bind("<<ComboboxSelected>>", self._on_profile_selected)
+
+        # Các nút quản lý kịch bản nhanh
+        Retro3DButton(profile_row, text="+ THÊM KỊCH BẢN", width=120, height=30, top_color=BTN_GREEN_TOP, bot_color=BTN_GREEN_BOT, text_color=BTN_GREEN_TXT, command=self._cmd_add_profile).pack(side=tk.LEFT, padx=3)
+        Retro3DButton(profile_row, text="✏️ ĐỔI PHÍM TẮT", width=110, height=30, top_color=BTN_YELLOW_TOP, bot_color=BTN_YELLOW_BOT, text_color=BTN_YELLOW_TXT, command=self._cmd_edit_profile_hotkey).pack(side=tk.LEFT, padx=3)
+        Retro3DButton(profile_row, text="🗑️ XÓA KỊCH BẢN", width=110, height=30, top_color=BTN_RED_TOP, bot_color=BTN_RED_BOT, text_color=BTN_RED_TXT, command=self._cmd_delete_profile).pack(side=tk.LEFT, padx=3)
+
+        # Hàng cấu hình Tốc độ & Lặp
         ctrl_row = tk.Frame(slide_card, bg=VINTAGE_CARD_BG)
         ctrl_row.pack(fill=tk.X)
 
         tk.Label(ctrl_row, text="TỐC ĐỘ PHÁT:", font=FONT_TITLE, bg=VINTAGE_CARD_BG, fg=VINTAGE_TEXT_HEAD).pack(side=tk.LEFT, padx=(0, 6))
 
-        # Các nút bấm chọn tốc độ nhanh (Pill Buttons)
         self.speed_buttons = {}
         for spd_label in ["0.5x", "0.8x", "1.0x", "1.25x", "1.5x", "2.0x"]:
             is_default = (spd_label == "1.0x")
             btn = Retro3DButton(
                 ctrl_row,
                 text=spd_label,
-                width=50,
-                height=28,
+                width=48,
+                height=26,
                 top_color=BTN_RED_TOP if is_default else BTN_BEIGE_TOP,
                 bot_color=BTN_RED_BOT if is_default else BTN_BEIGE_BOT,
                 text_color=BTN_RED_TXT if is_default else BTN_BEIGE_TXT,
                 command=lambda s=spd_label: self._set_speed(s),
                 radius=6,
             )
-            btn.pack(side=tk.LEFT, padx=3)
+            btn.pack(side=tk.LEFT, padx=2)
             self.speed_buttons[spd_label] = btn
 
-        # Số lần lặp
-        tk.Label(ctrl_row, text="   LẶP:", font=FONT_TITLE, bg=VINTAGE_CARD_BG, fg=VINTAGE_TEXT_HEAD).pack(side=tk.LEFT, padx=(12, 4))
-        self.entry_loop = tk.Entry(
-            ctrl_row,
-            textvariable=self.loop_count_var,
-            width=4,
-            bg=VINTAGE_INNER_GROOVE,
-            fg=VINTAGE_TEXT_HEAD,
-            font=("Segoe UI", 9, "bold"),
-            relief=tk.FLAT,
-        )
+        tk.Label(ctrl_row, text="   LẶP:", font=FONT_TITLE, bg=VINTAGE_CARD_BG, fg=VINTAGE_TEXT_HEAD).pack(side=tk.LEFT, padx=(10, 4))
+        self.entry_loop = tk.Entry(ctrl_row, textvariable=self.loop_count_var, width=4, bg=VINTAGE_INNER_GROOVE, fg=VINTAGE_TEXT_HEAD, font=("Segoe UI", 9, "bold"), relief=tk.FLAT)
         self.entry_loop.pack(side=tk.LEFT)
 
-        # Nghỉ giữa vòng
-        tk.Label(ctrl_row, text="   NGHỈ (s):", font=FONT_TITLE, bg=VINTAGE_CARD_BG, fg=VINTAGE_TEXT_HEAD).pack(side=tk.LEFT, padx=(8, 4))
-        self.entry_delay = tk.Entry(
-            ctrl_row,
-            textvariable=self.loop_delay_var,
-            width=4,
-            bg=VINTAGE_INNER_GROOVE,
-            fg=VINTAGE_TEXT_HEAD,
-            font=("Segoe UI", 9, "bold"),
-            relief=tk.FLAT,
-        )
+        tk.Label(ctrl_row, text="   NGHỈ (s):", font=FONT_TITLE, bg=VINTAGE_CARD_BG, fg=VINTAGE_TEXT_HEAD).pack(side=tk.LEFT, padx=(6, 4))
+        self.entry_delay = tk.Entry(ctrl_row, textvariable=self.loop_delay_var, width=4, bg=VINTAGE_INNER_GROOVE, fg=VINTAGE_TEXT_HEAD, font=("Segoe UI", 9, "bold"), relief=tk.FLAT)
         self.entry_delay.pack(side=tk.LEFT)
 
-        # Checkboxes hàng dưới
-        chk_row = tk.Frame(slide_card, bg=VINTAGE_CARD_BG)
-        chk_row.pack(fill=tk.X, pady=(8, 0))
-
-        tk.Checkbutton(
-            chk_row,
-            text="Bỏ qua di chuột thừa (Chỉ lưu Click & Phím - Tối ưu cho HIS)",
-            variable=self.ignore_movement_var,
-            font=FONT_BODY,
-            bg=VINTAGE_CARD_BG,
-            fg=VINTAGE_TEXT_BODY,
-            activebackground=VINTAGE_CARD_BG,
-            selectcolor=VINTAGE_INNER_GROOVE,
-        ).pack(side=tk.LEFT, padx=(0, 16))
-
-        tk.Checkbutton(
-            chk_row,
-            text="Đếm ngược 3 giây khi bắt đầu",
-            variable=self.countdown_var,
-            font=FONT_BODY,
-            bg=VINTAGE_CARD_BG,
-            fg=VINTAGE_TEXT_BODY,
-            activebackground=VINTAGE_CARD_BG,
-            selectcolor=VINTAGE_INNER_GROOVE,
-        ).pack(side=tk.LEFT)
+        tk.Checkbutton(ctrl_row, text="Bỏ qua di chuột thừa", variable=self.ignore_movement_var, font=FONT_BODY, bg=VINTAGE_CARD_BG, fg=VINTAGE_TEXT_BODY, selectcolor=VINTAGE_INNER_GROOVE).pack(side=tk.LEFT, padx=(12, 0))
+        tk.Checkbutton(ctrl_row, text="Đếm ngược 3s", variable=self.countdown_var, font=FONT_BODY, bg=VINTAGE_CARD_BG, fg=VINTAGE_TEXT_BODY, selectcolor=VINTAGE_INNER_GROOVE).pack(side=tk.LEFT, padx=(6, 0))
 
         # ==========================================
-        # 2. KHỐI "PRESS" (HỆ NÚT BẤM 3D MATTE THEO ẢNH MẪU)
+        # 2. KHỐI "PRESS" (NÚT BẤM 3D MATTE THEO ẢNH)
         # ==========================================
         press_card = self._create_section_card(self.root, "PRESS")
 
-        # Hàng nút điều khiển chính (Row 1 trong ảnh)
         row1 = tk.Frame(press_card, bg=VINTAGE_CARD_BG)
-        row1.pack(fill=tk.X, pady=(2, 6))
+        row1.pack(fill=tk.X, pady=(2, 5))
 
         self.btn_rec = Retro3DButton(
             row1,
-            text="HỌC THAO TÁC (F8)",
+            text=f"HỌC THAO TÁC ({self.manager.hotkey_record_str})",
             width=165,
             height=42,
             top_color=BTN_YELLOW_TOP,
@@ -410,36 +436,36 @@ class SmartOperationApp:
             text_color=BTN_YELLOW_TXT,
             command=self._cmd_start_recording,
         )
-        self.btn_rec.pack(side=tk.LEFT, padx=(0, 10))
+        self.btn_rec.pack(side=tk.LEFT, padx=(0, 8))
 
         self.btn_play = Retro3DButton(
             row1,
-            text="CHẠY THAO TÁC (F9)",
-            width=165,
+            text="CHẠY KỊCH BẢN (F9)",
+            width=175,
             height=42,
             top_color=BTN_GREEN_TOP,
             bot_color=BTN_GREEN_BOT,
             text_color=BTN_GREEN_TXT,
             command=self._cmd_start_playing,
         )
-        self.btn_play.pack(side=tk.LEFT, padx=(0, 10))
+        self.btn_play.pack(side=tk.LEFT, padx=(0, 8))
 
         self.btn_stop = Retro3DButton(
             row1,
-            text="DỪNG HỌC (F8)",
-            width=140,
+            text="DỪNG HỌC",
+            width=120,
             height=42,
             top_color=BTN_BLUE_TOP,
             bot_color=BTN_BLUE_BOT,
             text_color=BTN_BLUE_TXT,
             command=self._cmd_stop_recording,
         )
-        self.btn_stop.pack(side=tk.LEFT, padx=(0, 10))
+        self.btn_stop.pack(side=tk.LEFT, padx=(0, 8))
         self.btn_stop.configure_state("disabled")
 
         self.btn_panic = Retro3DButton(
             row1,
-            text="DỪNG KHẨN CẤP (ESC)",
+            text=f"DỪNG KHẨN CẤP ({self.manager.hotkey_panic_str})",
             width=180,
             height=42,
             top_color=BTN_RED_TOP,
@@ -449,15 +475,14 @@ class SmartOperationApp:
         )
         self.btn_panic.pack(side=tk.RIGHT)
 
-        # Hàng nút phụ quản lý kịch bản (Row 2 dạng nút con vuông/nhỏ trong ảnh)
         row2 = tk.Frame(press_card, bg=VINTAGE_CARD_BG)
-        row2.pack(fill=tk.X, pady=(4, 2))
+        row2.pack(fill=tk.X, pady=(3, 2))
 
-        Retro3DButton(row2, text="MỞ .JSON", width=95, height=34, top_color=BTN_BLUE_TOP, bot_color=BTN_BLUE_BOT, text_color=BTN_BLUE_TXT, command=self._cmd_load_file).pack(side=tk.LEFT, padx=(0, 6))
-        Retro3DButton(row2, text="LƯU .JSON", width=95, height=34, top_color=BTN_YELLOW_TOP, bot_color=BTN_YELLOW_BOT, text_color=BTN_YELLOW_TXT, command=self._cmd_save_file).pack(side=tk.LEFT, padx=(0, 6))
-        Retro3DButton(row2, text="SỬA ĐỘ TRỄ", width=105, height=34, top_color=BTN_GREEN_TOP, bot_color=BTN_GREEN_BOT, text_color=BTN_GREEN_TXT, command=self._cmd_edit_delay).pack(side=tk.LEFT, padx=(0, 6))
-        Retro3DButton(row2, text="XÓA BƯỚC", width=95, height=34, top_color=BTN_BEIGE_TOP, bot_color=BTN_BEIGE_BOT, text_color=BTN_BEIGE_TXT, command=self._cmd_delete_selected_action).pack(side=tk.LEFT, padx=(0, 6))
-        Retro3DButton(row2, text="XÓA HẾT", width=85, height=34, top_color=BTN_RED_TOP, bot_color=BTN_RED_BOT, text_color=BTN_RED_TXT, command=self._cmd_clear_actions).pack(side=tk.RIGHT)
+        Retro3DButton(row2, text="MỞ .JSON", width=95, height=32, top_color=BTN_BLUE_TOP, bot_color=BTN_BLUE_BOT, text_color=BTN_BLUE_TXT, command=self._cmd_load_file).pack(side=tk.LEFT, padx=(0, 6))
+        Retro3DButton(row2, text="LƯU .JSON", width=95, height=32, top_color=BTN_YELLOW_TOP, bot_color=BTN_YELLOW_BOT, text_color=BTN_YELLOW_TXT, command=self._cmd_save_file).pack(side=tk.LEFT, padx=(0, 6))
+        Retro3DButton(row2, text="SỬA ĐỘ TRỄ", width=105, height=32, top_color=BTN_GREEN_TOP, bot_color=BTN_GREEN_BOT, text_color=BTN_GREEN_TXT, command=self._cmd_edit_delay).pack(side=tk.LEFT, padx=(0, 6))
+        Retro3DButton(row2, text="XÓA BƯỚC", width=95, height=32, top_color=BTN_BEIGE_TOP, bot_color=BTN_BEIGE_BOT, text_color=BTN_BEIGE_TXT, command=self._cmd_delete_selected_action).pack(side=tk.LEFT, padx=(0, 6))
+        Retro3DButton(row2, text="XÓA HẾT BƯỚC", width=110, height=32, top_color=BTN_RED_TOP, bot_color=BTN_RED_BOT, text_color=BTN_RED_TXT, command=self._cmd_clear_actions).pack(side=tk.RIGHT)
 
         # ==========================================
         # 3. KHỐI "SCROLL" (BẢNG KỊCH BẢN THAO TÁC)
@@ -485,7 +510,7 @@ class SmartOperationApp:
         self.tree.column("stt", width=45, anchor="center")
         self.tree.column("delay", width=85, anchor="center")
         self.tree.column("type", width=140, anchor="center")
-        self.tree.column("detail", width=490, anchor="w")
+        self.tree.column("detail", width=500, anchor="w")
 
         scrollbar = ttk.Scrollbar(tree_frame, orient=tk.VERTICAL, command=self.tree.yview, style="RetroHardware.Vertical.TScrollbar")
         self.tree.configure(yscroll=scrollbar.set)
@@ -493,9 +518,8 @@ class SmartOperationApp:
         self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-        # Thống kê kịch bản ở đáy thẻ SCROLL
         stats_bar = tk.Frame(scroll_card, bg=VINTAGE_CARD_BG)
-        stats_bar.pack(fill=tk.X, pady=(6, 0))
+        stats_bar.pack(fill=tk.X, pady=(5, 0))
 
         self.lbl_stats = tk.Label(
             stats_bar,
@@ -508,17 +532,262 @@ class SmartOperationApp:
 
         tk.Label(
             stats_bar,
-            text="💡 Gợi ý HIS: Sửa độ trễ trước bước Ký số lên 1.5s - 2.0s để máy chủ kịp nạp chứng thư số.",
+            text="💡 Gợi ý: Thu nhỏ ứng dụng vào khay hệ thống, chuyển sang phần mềm HIS và nhấn tổ hợp phím đã gán để chạy!",
             font=("Segoe UI", 8, "italic"),
             bg=VINTAGE_CARD_BG,
             fg=VINTAGE_TEXT_MUTED,
         ).pack(side=tk.RIGHT)
+
+        # Đồng bộ danh sách kịch bản ban đầu
+        self._refresh_profile_list()
+
+    # ==========================================
+    # QUẢN LÝ KHAY HỆ THỐNG (SYSTEM TRAY)
+    # ==========================================
+    def _setup_system_tray(self):
+        """Khởi tạo icon khay hệ thống Windows (chạy ngầm)."""
+        icon_img = create_tray_icon_image()
+
+        def _action_open(icon, item):
+            self.root.after(0, self._show_from_tray)
+
+        def _action_panic(icon, item):
+            self.manager.stop_playing()
+
+        def _action_exit(icon, item):
+            self._exit_app()
+
+        tray_menu = pystray.Menu(
+            pystray.MenuItem("📌 Mở giao diện chính", _action_open, default=True),
+            pystray.MenuItem("🛑 Dừng khẩn cấp (ESC)", _action_panic),
+            pystray.Menu.SEPARATOR,
+            pystray.MenuItem("❌ Thoát ứng dụng", _action_exit),
+        )
+
+        self.tray_icon = pystray.Icon(
+            "SmartOperation",
+            icon_img,
+            "Smart Operation - HIS Bot v0.4.1 (Đang chạy ngầm)",
+            tray_menu,
+        )
+
+        threading.Thread(target=self.tray_icon.run, daemon=True).start()
+
+    def _hide_to_tray(self):
+        """Ẩn cửa sổ xuống khay hệ thống."""
+        self.root.withdraw()
+
+    def _show_from_tray(self):
+        """Khôi phục cửa sổ từ khay hệ thống."""
+        self.root.deiconify()
+        self.root.lift()
+        self.root.focus_force()
+
+    def _on_window_close(self):
+        """Khi người dùng bấm nút [X] ở góc cửa sổ."""
+        if self.manager.minimize_to_tray_on_close:
+            self._hide_to_tray()
+        else:
+            self._exit_app()
+
+    def _exit_app(self):
+        """Thoát hoàn toàn ứng dụng."""
+        self.manager.stop_global_hotkeys()
+        self.manager.stop_playing()
+        if self.countdown_timer:
+            self.root.after_cancel(self.countdown_timer)
+        if self.tray_icon:
+            try:
+                self.tray_icon.stop()
+            except Exception:
+                pass
+        self.root.after(0, self.root.destroy)
+
+    # ==========================================
+    # CÀI ĐẶT TỔ HỢP PHÍM (HOTKEY SETTINGS)
+    # ==========================================
+    def _cmd_open_settings(self):
+        """Mở cửa sổ cài đặt tổ hợp phím hệ thống."""
+        win = tk.Toplevel(self.root)
+        win.title("CÀI ĐẶT TỔ HỢP PHÍM & HỆ THỐNG")
+        win.geometry("450x330")
+        win.minsize(420, 300)
+        win.configure(bg=VINTAGE_BG)
+        win.transient(self.root)
+        win.grab_set()
+
+        card = tk.Frame(win, bg=VINTAGE_CARD_BG, highlightbackground=VINTAGE_CARD_BORDER, highlightthickness=2, padx=16, pady=14)
+        card.pack(fill=tk.BOTH, expand=True, padx=14, pady=14)
+
+        tk.Label(card, text="⚙️ CÀI ĐẶT HỆ THỐNG", font=FONT_HEADER, bg=VINTAGE_CARD_BG, fg=VINTAGE_TEXT_HEAD).pack(anchor="w", pady=(0, 10))
+
+        # Phím bắt đầu học
+        f1 = tk.Frame(card, bg=VINTAGE_CARD_BG)
+        f1.pack(fill=tk.X, pady=4)
+        tk.Label(f1, text="Phím Bắt đầu / Dừng học thao tác:", font=FONT_BODY, bg=VINTAGE_CARD_BG, fg=VINTAGE_TEXT_HEAD).pack(side=tk.LEFT)
+        entry_rec = tk.Entry(f1, font=("Segoe UI", 9, "bold"), width=12, justify="center")
+        entry_rec.insert(0, self.manager.hotkey_record_str)
+        entry_rec.pack(side=tk.RIGHT)
+
+        # Phím dừng khẩn cấp
+        f2 = tk.Frame(card, bg=VINTAGE_CARD_BG)
+        f2.pack(fill=tk.X, pady=4)
+        tk.Label(f2, text="Phím Dừng khẩn cấp (Panic Stop):", font=FONT_BODY, bg=VINTAGE_CARD_BG, fg=VINTAGE_TEXT_HEAD).pack(side=tk.LEFT)
+        entry_panic = tk.Entry(f2, font=("Segoe UI", 9, "bold"), width=12, justify="center")
+        entry_panic.insert(0, self.manager.hotkey_panic_str)
+        entry_panic.pack(side=tk.RIGHT)
+
+        # Checkbox thu nhỏ khay
+        tray_var = tk.BooleanVar(value=self.manager.minimize_to_tray_on_close)
+        chk_tray = tk.Checkbutton(
+            card,
+            text="Thu nhỏ xuống Khay hệ thống khi bấm nút đóng [X]",
+            variable=tray_var,
+            font=FONT_BODY,
+            bg=VINTAGE_CARD_BG,
+            fg=VINTAGE_TEXT_HEAD,
+            selectcolor=VINTAGE_INNER_GROOVE,
+        )
+        chk_tray.pack(anchor="w", pady=(10, 10))
+
+        tk.Label(
+            card,
+            text="Gợi ý: Có thể dùng phím đơn (F8, F9, ESC,...) hoặc tổ hợp (Ctrl+F1, Alt+1, Ctrl+Shift+K).",
+            font=("Segoe UI", 8, "italic"),
+            bg=VINTAGE_CARD_BG,
+            fg=VINTAGE_TEXT_MUTED,
+            wraplength=380,
+            justify="left",
+        ).pack(anchor="w", pady=(0, 10))
+
+        def _save():
+            new_rec = entry_rec.get().strip().upper()
+            new_panic = entry_panic.get().strip().upper()
+            if not new_rec or not new_panic:
+                messagebox.showwarning("Lỗi", "Vui lòng không để trống phím tắt!", parent=win)
+                return
+            self.manager.hotkey_record_str = new_rec
+            self.manager.hotkey_panic_str = new_panic
+            self.manager.minimize_to_tray_on_close = tray_var.get()
+            self.manager.save_library()
+            self.manager.reload_global_hotkeys()
+
+            self.btn_rec.set_text(f"HỌC THAO TÁC ({new_rec})")
+            self.btn_panic.set_text(f"DỪNG KHẨN CẤP ({new_panic})")
+            win.destroy()
+            messagebox.showinfo("Thành công", "Đã cập nhật cài đặt phím tắt hệ thống!")
+
+        btn_row = tk.Frame(card, bg=VINTAGE_CARD_BG)
+        btn_row.pack(fill=tk.X, pady=(6, 0))
+        Retro3DButton(btn_row, text="💾 LƯU CÀI ĐẶT", width=120, height=34, top_color=BTN_GREEN_TOP, bot_color=BTN_GREEN_BOT, text_color=BTN_GREEN_TXT, command=_save).pack(side=tk.RIGHT, padx=4)
+        Retro3DButton(btn_row, text="HỦY", width=80, height=34, top_color=BTN_BEIGE_TOP, bot_color=BTN_BEIGE_BOT, text_color=BTN_BEIGE_TXT, command=win.destroy).pack(side=tk.RIGHT)
+
+    # ==========================================
+    # QUẢN LÝ ĐA KỊCH BẢN (MULTI-SCRIPT PROFILES)
+    # ==========================================
+    def _refresh_profile_list(self):
+        """Cập nhật dropdown chọn kịch bản."""
+        display_values = []
+        cur_idx = 0
+        active = self.manager.get_active_profile()
+
+        for idx, p in enumerate(self.manager.profiles):
+            hk_text = f"[{p.hotkey}]" if p.hotkey else "[Chưa gán]"
+            total = len(p.actions)
+            display_values.append(f"{p.name} - Phím: {hk_text} ({total} bước)")
+            if active and p.id == active.id:
+                cur_idx = idx
+
+        self.profile_combo["values"] = display_values
+        if display_values:
+            self.profile_combo.current(cur_idx)
+            self._load_active_profile_ui()
+
+    def _on_profile_selected(self, event):
+        idx = self.profile_combo.current()
+        if 0 <= idx < len(self.manager.profiles):
+            sel_profile = self.manager.profiles[idx]
+            self.manager.set_active_profile(sel_profile.id)
+            self._load_active_profile_ui()
+
+    def _load_active_profile_ui(self):
+        """Nạp dữ liệu của profile đang chọn lên bảng."""
+        active = self.manager.get_active_profile()
+        if not active:
+            return
+        # Cập nhật nút Play với phím tắt tương ứng
+        self.btn_play.set_text(f"CHẠY ({active.hotkey})")
+        self.speed_var.set(f"{active.speed:.1f}x")
+        self.loop_count_var.set(str(active.loop_count))
+        self.loop_delay_var.set(str(active.loop_delay))
+        self._refresh_action_tree()
+
+    def _cmd_add_profile(self):
+        """Thêm kịch bản mới."""
+        name = simpledialog.askstring("THÊM KỊCH BẢN MỚI", "Nhập tên cho kịch bản mới:", parent=self.root)
+        if not name or not name.strip():
+            return
+        hotkey = simpledialog.askstring("GÁN PHÍM TẮT", f"Nhập tổ hợp phím kích hoạt cho '{name}' (VD: F9, F10, Ctrl+F1):", initialvalue="F10", parent=self.root)
+        if not hotkey:
+            hotkey = "F10"
+
+        new_profile = ScriptProfile(
+            name=name.strip(),
+            hotkey=hotkey.strip().upper(),
+            actions=[],
+            speed=1.0,
+            loop_count=1,
+            loop_delay=1.0,
+        )
+        self.manager.profiles.append(new_profile)
+        self.manager.set_active_profile(new_profile.id)
+        self.manager.save_library()
+        self.manager.reload_global_hotkeys()
+        self._refresh_profile_list()
+        messagebox.showinfo("Thành công", f"Đã thêm kịch bản '{name}' với phím tắt [{hotkey.strip().upper()}]!")
+
+    def _cmd_edit_profile_hotkey(self):
+        """Đổi tên hoặc phím tắt của kịch bản hiện tại."""
+        active = self.manager.get_active_profile()
+        if not active:
+            return
+        new_name = simpledialog.askstring("ĐỔI TÊN KỊCH BẢN", "Tên kịch bản:", initialvalue=active.name, parent=self.root)
+        if new_name and new_name.strip():
+            active.name = new_name.strip()
+
+        new_hk = simpledialog.askstring("ĐỔI PHÍM TẮT KÍCH HOẠT", f"Tổ hợp phím cho '{active.name}' (VD: F9, F10, Ctrl+F1):", initialvalue=active.hotkey, parent=self.root)
+        if new_hk and new_hk.strip():
+            active.hotkey = new_hk.strip().upper()
+
+        self.manager.save_library()
+        self.manager.reload_global_hotkeys()
+        self._refresh_profile_list()
+
+    def _cmd_delete_profile(self):
+        """Xóa kịch bản đang chọn."""
+        if len(self.manager.profiles) <= 1:
+            messagebox.showwarning("Cảnh báo", "Bạn phải giữ lại ít nhất 1 kịch bản!")
+            return
+        active = self.manager.get_active_profile()
+        if not active:
+            return
+        if messagebox.askyesno("Xác nhận", f"Bạn có chắc muốn xóa kịch bản '{active.name}'?"):
+            self.manager.profiles = [p for p in self.manager.profiles if p.id != active.id]
+            self.manager.active_profile_id = self.manager.profiles[0].id
+            self.manager.save_library()
+            self.manager.reload_global_hotkeys()
+            self._refresh_profile_list()
 
     # ==========================================
     # LOGIC ĐIỀU KHIỂN & CẬP NHẬT TRẠNG THÁI
     # ==========================================
     def _set_speed(self, spd_text: str):
         self.speed_var.set(spd_text)
+        active = self.manager.get_active_profile()
+        if active:
+            active.speed = self._parse_speed()
+            self.manager.save_library()
+
         for k, btn in self.speed_buttons.items():
             is_active = (k == spd_text)
             btn.top_color = BTN_RED_TOP if is_active else BTN_BEIGE_TOP
@@ -572,24 +841,23 @@ class SmartOperationApp:
             self.root.after_cancel(self.countdown_timer)
             self.countdown_timer = None
         self.manager.stop_recording()
+        self._refresh_profile_list()
 
     def _cmd_start_playing(self):
-        if not self.manager.actions:
-            messagebox.showwarning("THÔNG BÁO", "Chưa có thao tác nào trong kịch bản!\nNhấn F8 để học thao tác hoặc mở file .json đã lưu.")
+        active = self.manager.get_active_profile()
+        if not active or not active.actions:
+            messagebox.showwarning("THÔNG BÁO", "Kịch bản hiện tại chưa có thao tác nào!\nNhấn F8 để học hoặc mở file kịch bản.")
             return
-        speed = self._parse_speed()
-        loops = self._parse_loop_count()
-        delay = self._parse_loop_delay()
-        self.manager.start_playing(speed=speed, loop_count=loops, loop_delay=delay)
+        active.speed = self._parse_speed()
+        active.loop_count = self._parse_loop_count()
+        active.loop_delay = self._parse_loop_delay()
+        self.manager.start_playing_profile(active)
 
     def _cmd_emergency_stop(self):
         if self.countdown_timer:
             self.root.after_cancel(self.countdown_timer)
             self.countdown_timer = None
-        if self.manager.state == MacroManager.STATE_RECORDING:
-            self.manager.stop_recording()
-        elif self.manager.state == MacroManager.STATE_PLAYING:
-            self.manager.stop_playing()
+        self.manager.stop_playing()
 
     def _set_hud(self, text: str, fg: str):
         self.hud_status_lbl.configure(text=text, fg=fg)
@@ -597,10 +865,18 @@ class SmartOperationApp:
     def _on_manager_state_changed(self, new_state: str):
         self.root.after(0, lambda: self._handle_state_ui(new_state))
 
+    def _on_profile_triggered(self, profile: ScriptProfile):
+        """Được gọi khi người dùng bấm phím tắt của một kịch bản từ bất kỳ đâu."""
+        self.root.after(0, lambda: self._refresh_profile_list())
+
     def _handle_state_ui(self, state: str):
+        active = self.manager.get_active_profile()
+        p_name = active.name if active else "Mặc định"
+        p_hk = active.hotkey if active else "F9"
+
         if state == MacroManager.STATE_IDLE:
             self._set_hud(
-                "● STATUS: SẴN SÀNG (READY)   │   [F8] HỌC THAO TÁC   │   [F9] CHẠY BOT   │   [ESC] DỪNG KHẨN CẤP",
+                f"● SẴN SÀNG │ KỊCH BẢN: '{p_name}' [{p_hk}] │ HỌC: [{self.manager.hotkey_record_str}] │ DỪNG: [{self.manager.hotkey_panic_str}]",
                 fg=BTN_GREEN_TXT,
             )
             self.btn_rec.configure_state("normal")
@@ -610,7 +886,7 @@ class SmartOperationApp:
 
         elif state == MacroManager.STATE_RECORDING:
             self._set_hud(
-                "🔴 [REC] ĐANG GHI NHỚ THAO TÁC... HÃY LÀM TRÊN HIS! XONG NHẤN F8 HOẶC ESC ĐỂ LƯU",
+                f"🔴 [REC] ĐANG GHI THAO TÁC CHO '{p_name}'... LÀM TRÊN HIS XONG NHẤN [{self.manager.hotkey_record_str}] HOẶC [{self.manager.hotkey_panic_str}]",
                 fg=BTN_RED_BOT,
             )
             self.btn_rec.configure_state("disabled")
@@ -619,7 +895,7 @@ class SmartOperationApp:
 
         elif state == MacroManager.STATE_PLAYING:
             self._set_hud(
-                "🔵 [RUN] BOT ĐANG TỰ ĐỘNG THỰC THI... NHẤN PHÍM ESC BẤT CỨ LÚC NÀO ĐỂ DỪNG NGAY!",
+                f"🔵 [RUN] ĐANG THỰC HIỆN KỊCH BẢN '{p_name}'... NHẤN [{self.manager.hotkey_panic_str}] ĐỂ DỪNG NGAY!",
                 fg=BTN_BLUE_TXT,
             )
             self.btn_rec.configure_state("disabled")
@@ -630,17 +906,21 @@ class SmartOperationApp:
         self.root.after(0, lambda: self._add_action_to_tree(action, count))
 
     def _on_player_step(self, step: int, total: int, cur_loop: int, total_loops: int):
+        active = self.manager.get_active_profile()
+        p_name = active.name if active else ""
         loop_str = f"VÒNG {cur_loop}/{total_loops}" if total_loops > 0 else f"VÒNG {cur_loop} (VÔ HẠN)"
-        txt = f"🔵 [RUN] {loop_str} ── BƯỚC {step:02d}/{total:02d} │ NHẤN ESC ĐỂ DỪNG KHẨN CẤP"
+        txt = f"🔵 [RUN '{p_name}'] {loop_str} ── BƯỚC {step:02d}/{total:02d} │ NHẤN [{self.manager.hotkey_panic_str}] ĐỂ DỪNG"
         self.root.after(0, lambda: self._set_hud(txt, fg=BTN_BLUE_TXT))
 
     def _on_player_finished(self, success: bool, aborted: bool):
+        active = self.manager.get_active_profile()
+        p_name = active.name if active else ""
         if aborted:
-            msg = "ĐÃ DỪNG KHẨN CẤP THEO LỆNH (ESC)"
-            self.root.after(0, lambda: self._set_hud(f"⚠️ {msg} │ [F8] GHI TIẾP │ [F9] CHẠY LẠI", fg=BTN_YELLOW_TXT))
+            msg = f"ĐÃ DỪNG KHẨN CẤP '{p_name}' THEO LỆNH ({self.manager.hotkey_panic_str})"
+            self.root.after(0, lambda: self._set_hud(f"⚠️ {msg}", fg=BTN_YELLOW_TXT))
         else:
-            msg = "HOÀN TẤT TOÀN BỘ KỊCH BẢN THÀNH CÔNG!"
-            self.root.after(0, lambda: self._set_hud(f"⭐ {msg} │ [F8] GHI TIẾP │ [F9] CHẠY LẠI", fg=BTN_GREEN_TXT))
+            msg = f"HOÀN TẤT KỊCH BẢN '{p_name}' THÀNH CÔNG!"
+            self.root.after(0, lambda: self._set_hud(f"⭐ {msg}", fg=BTN_GREEN_TXT))
 
     # ==========================================
     # QUẢN LÝ BẢNG KỊCH BẢN (TREEVIEW)
@@ -684,33 +964,45 @@ class SmartOperationApp:
 
     def _refresh_action_tree(self):
         self._clear_tree()
-        for idx, act in enumerate(self.manager.actions, start=1):
+        active = self.manager.get_active_profile()
+        if not active:
+            return
+        for idx, act in enumerate(active.actions, start=1):
             t_name, detail, delay_str = self._format_action_display(act)
             self.tree.insert("", tk.END, values=(f"{idx:02d}", delay_str, t_name, detail))
         self._update_stats()
 
     def _update_stats(self):
-        total = len(self.manager.actions)
-        total_time = sum(act.delay for act in self.manager.actions)
+        active = self.manager.get_active_profile()
+        actions = active.actions if active else []
+        total = len(actions)
+        total_time = sum(act.delay for act in actions)
         self.lbl_stats.configure(text=f"[ THAO TÁC: {total:03d} ]   [ TỔNG THỜI GIAN: {total_time:.2f}s ]")
 
     def _cmd_delete_selected_action(self):
+        active = self.manager.get_active_profile()
+        if not active:
+            return
         selected = self.tree.selection()
         if not selected:
             messagebox.showinfo("THÔNG BÁO", "Hãy chọn một dòng trong bảng để xóa!")
             return
         idx = self.tree.index(selected[0])
-        if 0 <= idx < len(self.manager.actions):
-            del self.manager.actions[idx]
+        if 0 <= idx < len(active.actions):
+            del active.actions[idx]
+            self.manager.save_library()
             self._refresh_action_tree()
 
     def _cmd_edit_delay(self):
+        active = self.manager.get_active_profile()
+        if not active:
+            return
         selected = self.tree.selection()
         if not selected:
             messagebox.showinfo("THÔNG BÁO", "Hãy chọn một dòng trong bảng để sửa thời gian chờ!")
             return
         idx = self.tree.index(selected[0])
-        action = self.manager.actions[idx]
+        action = active.actions[idx]
 
         new_val = simpledialog.askfloat(
             "SỬA ĐỘ TRỄ",
@@ -721,43 +1013,40 @@ class SmartOperationApp:
         )
         if new_val is not None:
             action.delay = round(new_val, 4)
+            self.manager.save_library()
             self._refresh_action_tree()
 
     def _cmd_clear_actions(self):
-        if not self.manager.actions:
+        active = self.manager.get_active_profile()
+        if not active or not active.actions:
             return
-        if messagebox.askyesno("XÁC NHẬN", "Bạn có chắc chắn muốn xóa toàn bộ kịch bản hiện tại?"):
-            self.manager.actions = []
+        if messagebox.askyesno("XÁC NHẬN", f"Bạn có chắc muốn xóa tất cả thao tác của '{active.name}'?"):
+            active.actions = []
+            self.manager.save_library()
             self._refresh_action_tree()
 
-    # ==========================================
-    # LƯU & MỞ FILE KỊCH BẢN (.JSON)
-    # ==========================================
     def _cmd_save_file(self):
-        if not self.manager.actions:
-            messagebox.showwarning("CẢNH BÁO", "Không có thao tác nào để lưu!")
+        active = self.manager.get_active_profile()
+        if not active or not active.actions:
+            messagebox.showwarning("CẢNH BÁO", "Kịch bản hiện tại chưa có thao tác nào để lưu!")
             return
 
         file_path = filedialog.asksaveasfilename(
             title="LƯU KỊCH BẢN THAO TÁC",
             defaultextension=".json",
             filetypes=[("JSON Macro Script", "*.json"), ("All Files", "*.*")],
-            initialfile="his_ki_so_ket_thuc.json",
+            initialfile=f"{active.name.lower().replace(' ', '_')}.json",
         )
         if not file_path:
             return
 
         try:
             MacroStorage.save_to_file(
-                self.manager.actions,
+                active.actions,
                 file_path,
-                metadata={
-                    "speed": self.speed_var.get(),
-                    "loop_count": self.loop_count_var.get(),
-                },
+                metadata={"name": active.name, "hotkey": active.hotkey, "speed": active.speed},
             )
-            self.current_file_path = file_path
-            messagebox.showinfo("THÀNH CÔNG", f"Đã lưu kịch bản vào file:\n{os.path.basename(file_path)}")
+            messagebox.showinfo("THÀNH CÔNG", f"Đã xuất kịch bản ra file:\n{os.path.basename(file_path)}")
         except Exception as ex:
             messagebox.showerror("LỖI KHI LƯU", str(ex))
 
@@ -771,19 +1060,14 @@ class SmartOperationApp:
 
         try:
             actions = MacroStorage.load_from_file(file_path)
-            self.manager.actions = actions
-            self.current_file_path = file_path
-            self._refresh_action_tree()
-            messagebox.showinfo("THÀNH CÔNG", f"Đã nạp {len(actions)} thao tác từ:\n{os.path.basename(file_path)}")
+            active = self.manager.get_active_profile()
+            if active:
+                active.actions = actions
+                self.manager.save_library()
+                self._refresh_action_tree()
+                messagebox.showinfo("THÀNH CÔNG", f"Đã nạp {len(actions)} thao tác từ:\n{os.path.basename(file_path)}")
         except Exception as ex:
             messagebox.showerror("LỖI KHI MỞ", str(ex))
-
-    def _on_close(self):
-        self.manager.stop_global_hotkeys()
-        self.manager.stop_playing()
-        if self.countdown_timer:
-            self.root.after_cancel(self.countdown_timer)
-        self.root.destroy()
 
 
 def run_app():
