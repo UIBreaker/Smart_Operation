@@ -7,3 +7,5 @@ dist/
 .vscode/
 .idea/
 *.log
+scripts_library.json
+
