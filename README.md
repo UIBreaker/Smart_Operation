@@ -1,41 +1,10 @@
 # 🎛️ Smart Operation // [Vintage Hardware Edition]
 
-> **Trợ Lý Tự Động Hóa Thao Tác Máy Tính & Phần Mềm Y Tế (HIS) - Phong cách Thiết Kế Phần Cứng Cổ Điển (Vintage Cream / Dieter Rams / Neumorphic Matte)**
-
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/)
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-lightgrey.svg)](https://www.microsoft.com/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Style](https://img.shields.io/badge/style-Vintage%20Matte%20Cream-d9534f.svg)](#)
 
-**Smart Operation** là công cụ tự động hóa thao tác (Macro / Robotic Process Automation) siêu nhẹ dành cho Windows, được thiết kế đặc biệt để giải quyết các quy trình lặp đi lặp lại hàng ngày trên các phần mềm quản lý bệnh viện (**HIS**), phòng khám và ứng dụng văn phòng:
-- 🩺 **Điền form bệnh án & kết luận chuẩn**
-- ✍️ **Ký số điện tử (USB Token / Cloud CA)**
-- 🏁 **Kết thúc ca khám & in đơn thuốc**
-
----
-
-## 🎨 Điểm Nhấn Thiết Kế [Vintage Hardware Console]
-
-Lấy cảm hứng từ ngôn ngữ thiết kế thiết bị âm thanh Hi-Fi và máy chơi game cổ điển của Braun, Dieter Rams và Teenage Engineering:
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│  SLIDE   [ Thanh trượt tốc độ & Biển báo trạng thái HUD ]    │
-│  PRESS   [ Hệ nút bấm 3D Matte: Vàng, Xanh Lá, Xanh Dương ] │
-│  SCROLL  [ Bảng kịch bản thao tác & Rãnh cuộn console ]      │
-└──────────────────────────────────────────────────────────────┘
-```
-
-1. **SLIDE**: 
-   - Rãnh trượt trạng thái thời gian thực với đèn báo LED.
-   - Các nút chọn tốc độ dạng phím gạt: `0.5x`, `0.8x`, `1.0x (CHUẨN)`, `1.25x`, `1.5x`, `2.0x`.
-2. **PRESS**:
-   - Các nút bấm khối 3D bề mặt mờ (Matte Finish) phản hồi cơ học: Khi nhấp chuột, nút sẽ **lún xuống** và nảy lên chân thực.
-   - Bảng màu hoài cổ sang trọng: Vàng Mustard (`#e8b056`), Xanh Matcha (`#8eb77c`), Xanh Baby Blue (`#96c5dc`) và Đỏ Coral (`#d94f4f`).
-3. **SCROLL**:
-   - Bảng kịch bản hiển thị trên nền kem sứ mờ (`#faf8f3`), font chữ đậm nét, dễ quan sát từ xa trong phòng khám.
-
----
 
 ## ⚡ Tính Năng Cốt Lõi
 
