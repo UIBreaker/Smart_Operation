@@ -1,11 +1,11 @@
-# 👾 Smart Operation // [Pixel Edition]
+# 🎛️ Smart Operation // [Vintage Hardware Edition]
 
-> **Trợ Lý Tự Động Hóa Thao Tác Máy Tính & Phần Mềm Y Tế (HIS) - Phong cách Retro Pixel Art 8-Bit**
+> **Trợ Lý Tự Động Hóa Thao Tác Máy Tính & Phần Mềm Y Tế (HIS) - Phong cách Thiết Kế Phần Cứng Cổ Điển (Vintage Cream / Dieter Rams / Neumorphic Matte)**
 
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/)
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-lightgrey.svg)](https://www.microsoft.com/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Style](https://img.shields.io/badge/style-Retro%20Pixel%20Cyber-ff007f.svg)](#)
+[![Style](https://img.shields.io/badge/style-Vintage%20Matte%20Cream-d9534f.svg)](#)
 
 **Smart Operation** là công cụ tự động hóa thao tác (Macro / Robotic Process Automation) siêu nhẹ dành cho Windows, được thiết kế đặc biệt để giải quyết các quy trình lặp đi lặp lại hàng ngày trên các phần mềm quản lý bệnh viện (**HIS**), phòng khám và ứng dụng văn phòng:
 - 🩺 **Điền form bệnh án & kết luận chuẩn**
@@ -14,13 +14,26 @@
 
 ---
 
-## 🎨 Điểm Nhấn Giao Diện [Pixel Edition]
+## 🎨 Điểm Nhấn Thiết Kế [Vintage Hardware Console]
 
-- **Phong cách Retro Arcade 8-Bit**: Giao diện sắc nét, bảng màu Cyberpunk tương phản cao (Deep Space, Neon Cyan, Pixel Red, Arcade Yellow).
-- **Arcade Push Buttons**: Các nút bấm 3D nổi khối phản hồi lực nhấp trực quan.
-- **HUD Status Banner**: Biển báo trạng thái điện tử thời gian thực hiển thị phím tắt và thông tin vòng lặp.
-- **Retro Terminal List**: Bảng quản lý kịch bản dạng danh sách console retro, hiển thị rõ ràng từng tọa độ và độ trễ.
-- **Windows Native Beep**: Hiệu ứng âm thanh 8-bit native của Windows phát khi Bắt đầu ghi, Dừng và Thực thi.
+Lấy cảm hứng từ ngôn ngữ thiết kế thiết bị âm thanh Hi-Fi và máy chơi game cổ điển của Braun, Dieter Rams và Teenage Engineering:
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  SLIDE   [ Thanh trượt tốc độ & Biển báo trạng thái HUD ]    │
+│  PRESS   [ Hệ nút bấm 3D Matte: Vàng, Xanh Lá, Xanh Dương ] │
+│  SCROLL  [ Bảng kịch bản thao tác & Rãnh cuộn console ]      │
+└──────────────────────────────────────────────────────────────┘
+```
+
+1. **SLIDE**: 
+   - Rãnh trượt trạng thái thời gian thực với đèn báo LED.
+   - Các nút chọn tốc độ dạng phím gạt: `0.5x`, `0.8x`, `1.0x (CHUẨN)`, `1.25x`, `1.5x`, `2.0x`.
+2. **PRESS**:
+   - Các nút bấm khối 3D bề mặt mờ (Matte Finish) phản hồi cơ học: Khi nhấp chuột, nút sẽ **lún xuống** và nảy lên chân thực.
+   - Bảng màu hoài cổ sang trọng: Vàng Mustard (`#e8b056`), Xanh Matcha (`#8eb77c`), Xanh Baby Blue (`#96c5dc`) và Đỏ Coral (`#d94f4f`).
+3. **SCROLL**:
+   - Bảng kịch bản hiển thị trên nền kem sứ mờ (`#faf8f3`), font chữ đậm nét, dễ quan sát từ xa trong phòng khám.
 
 ---
 
@@ -50,10 +63,10 @@ Clone repository về máy tính:
 git clone https://github.com/UIBreaker/Smart_Operation.git
 cd Smart_Operation
 ```
-Hoặc bấm nút **Code -> Download ZIP** trên GitHub rồi giải nén.
+Hoặc tải file thực thi đóng gói sẵn từ mục [Releases](https://github.com/UIBreaker/Smart_Operation/releases).
 
 ### 2. Cài đặt thư viện
-Yêu cầu Python 3.8 trở lên. Chạy lệnh cài đặt thư viện phụ thuộc:
+Yêu cầu Python 3.8 trở lên:
 ```bash
 pip install -r requirements.txt
 ```
@@ -83,9 +96,9 @@ Giả sử quy trình khám của bạn gồm: **Điền kết luận -> Bấm K
 5. Nhấn lại phím **`[F8]`** (hoặc **`[ESC]`**). Nghe tiếng bíp báo hiệu hoàn tất.
 
 ### Bước 2: Tinh chỉnh thời gian chờ
-1. Quay lại Smart Operation, kiểm tra danh sách các bước đã ghi.
-2. Tại bước click nút **Ký số**, do USB Token hoặc máy chủ HIS thường mất khoảng 1.5 - 2 giây để nạp chữ ký, bạn chọn dòng đó và bấm **`✏️ SỬA CHỜ`**, nhập `1.5` hoặc `2.0` (giây).
-3. Bấm **`💾 LƯU .JSON`** để lưu kịch bản (ví dụ: `his_ki_so_ket_thuc.json`).
+1. Quay lại Smart Operation, kiểm tra danh sách các bước đã ghi trong khối **SCROLL**.
+2. Tại bước click nút **Ký số**, do USB Token hoặc máy chủ HIS thường mất khoảng 1.5 - 2 giây để nạp chữ ký, bạn chọn dòng đó và bấm **`SỬA ĐỘ TRỄ`**, nhập `1.5` hoặc `2.0` (giây).
+3. Bấm **`LƯU .JSON`** để lưu kịch bản (ví dụ: `his_ki_so_ket_thuc.json`).
 
 ### Bước 3: Sử dụng cho các bệnh nhân tiếp theo
 1. Mỗi khi chuyển sang ca khám của bệnh nhân mới trên HIS:
@@ -95,16 +108,15 @@ Giả sử quy trình khám của bạn gồm: **Điền kết luận -> Bấm K
 
 ---
 
-## 📦 Đóng Gói Thành File `.exe` Độc Lập (Tùy chọn)
+## 📦 Đóng Gói Thành File `.exe` Độc Lập
 
-Nếu bạn muốn tạo 1 file `.exe` duy nhất để chạy trên máy không cài Python:
 ```bash
 pip install pyinstaller
 pyinstaller --noconsole --onefile --name "SmartOperation" main.py
 ```
-File thực thi sẽ nằm tại: `dist/SmartOperation.exe`.
+File thực thi nằm tại: `dist/SmartOperation.exe`.
 
 ---
 
 ## 📄 Bản Quyền (License)
-Dự án được phân phối dưới giấy phép **MIT License**. Mọi người đều có thể tự do tải về, sử dụng và chỉnh sửa cho công việc cá nhân hoặc tổ chức.
+Dự án được phân phối dưới giấy phép **MIT License**.
