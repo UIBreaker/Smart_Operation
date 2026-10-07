@@ -63,7 +63,7 @@ class PixelButton(tk.Button):
 class SmartOperationApp:
     def __init__(self, root: tk.Tk):
         self.root = root
-        self.root.title("👾 SMART OPERATION // v1.0 [PIXEL EDITION]")
+        self.root.title("👾 SMART OPERATION // v0.2.0 [PIXEL EDITION]")
         self.root.geometry("860x720")
         self.root.minsize(800, 650)
         self.root.configure(bg=PIXEL_BG)
@@ -163,7 +163,7 @@ class SmartOperationApp:
 
         tag_lbl = tk.Label(
             top_row,
-            text="[ 8-BIT BOT // v1.0 ]",
+            text="[ 8-BIT BOT // v0.2.0 ]",
             font=(PIXEL_FONT, 10, "bold"),
             bg=PIXEL_PANEL,
             fg=PIXEL_YELLOW,
