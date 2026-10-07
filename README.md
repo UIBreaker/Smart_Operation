@@ -49,43 +49,7 @@ pip install -r requirements.txt
 
 ---
 
-## 🩺 Hướng Dẫn Quy Trình Thực Tế Cho Phần Mềm HIS
 
-Giả sử quy trình khám của bạn gồm: **Điền kết luận -> Bấm Ký số -> Chờ cửa sổ ký xác nhận -> Bấm Kết thúc khám**:
-
-### Bước 1: Học quy trình (Chỉ làm 1 lần)
-1. Mở phần mềm HIS và phần mềm **Smart Operation**.
-2. Chuyển sang màn hình ca khám trên phần mềm HIS.
-3. Nhấn phím **`[F8]`** trên bàn phím (nghe tiếng "bíp" bắt đầu ghi).
-4. Thực hiện các thao tác:
-   - Bấm vào ô chẩn đoán -> Nhập kết luận mẫu.
-   - Bấm vào nút **Ký số**.
-   - Chờ bảng USB Token hiện lên -> Bấm nút **Xác nhận / Ký**.
-   - Bấm nút **Kết thúc khám**.
-5. Nhấn lại phím **`[F8]`** (hoặc **`[ESC]`**). Nghe tiếng bíp báo hiệu hoàn tất.
-
-### Bước 2: Tinh chỉnh thời gian chờ
-1. Quay lại Smart Operation, kiểm tra danh sách các bước đã ghi trong khối **SCROLL**.
-2. Tại bước click nút **Ký số**, do USB Token hoặc máy chủ HIS thường mất khoảng 1.5 - 2 giây để nạp chữ ký, bạn chọn dòng đó và bấm **`SỬA ĐỘ TRỄ`**, nhập `1.5` hoặc `2.0` (giây).
-3. Bấm **`LƯU .JSON`** để lưu kịch bản (ví dụ: `his_ki_so_ket_thuc.json`).
-
-### Bước 3: Sử dụng cho các bệnh nhân tiếp theo
-1. Mỗi khi chuyển sang ca khám của bệnh nhân mới trên HIS:
-2. Chỉ cần nhấn phím **`[F9]`**!
-3. Bot sẽ tự động thực hiện toàn bộ quy trình điền, ký số và kết thúc khám.
-4. **Nếu có bất kỳ sự cố nào**: Nhấn ngay phím **`[ESC]`** để dừng bot ngay lập tức.
-
----
-
-## 📦 Đóng Gói Thành File `.exe` Độc Lập
-
-```bash
-pip install pyinstaller
-pyinstaller --noconsole --onefile --name "SmartOperation" main.py
-```
-File thực thi nằm tại: `dist/SmartOperation.exe`.
-
----
 
 ## 📄 Bản Quyền (License)
 Dự án được phân phối dưới giấy phép **MIT License**.
