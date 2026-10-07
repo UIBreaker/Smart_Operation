@@ -190,6 +190,24 @@ def test_macro_manager_state_machine():
     print("   [PASS] MacroManager chuyển đổi trạng thái chính xác.")
 
 
+def test_export_import_profile_string():
+    print("-> Kiểm tra sao chép / trích xuất kịch bản dạng chuỗi...")
+    from core import ScriptProfile, MacroStorage
+    p = ScriptProfile(name="Ký số chia sẻ", hotkey="Ctrl+F2", actions=[
+        MacroAction("mouse_click", delay=0.2, x=500, y=400, button="left", pressed=True)
+    ])
+    exported_str = MacroStorage.export_profile_to_string(p)
+    assert "smart_operation_macro" in exported_str
+    assert "Nhật Nam (@UIBreaker)" in exported_str
+
+    restored = MacroStorage.import_profile_from_string(exported_str)
+    assert restored is not None
+    assert restored.name == "Ký số chia sẻ"
+    assert restored.hotkey == "Ctrl+F2"
+    assert len(restored.actions) == 1
+    print("   [PASS] Sao chép & khôi phục kịch bản chính xác 100%.")
+
+
 if __name__ == "__main__":
     print("================ BẮT ĐẦU KIỂM THỬ CORE ENGINE ================")
     test_key_serialization()
@@ -199,5 +217,6 @@ if __name__ == "__main__":
     test_abort_flag_responsiveness()
     test_normalize_hotkey()
     test_script_profile_library()
+    test_export_import_profile_string()
     test_macro_manager_state_machine()
     print("================ TẤT CẢ KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG! ================")

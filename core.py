@@ -1,10 +1,11 @@
 """
-Smart Operation - Core Engine (v0.4.1)
+Smart Operation - Core Engine (v0.9.2)
+Tác giả: Nhật Nam (GitHub: @UIBreaker)
 Chịu trách nhiệm:
 - Ghi và phát lại chuột/bàn phím (DPI Awareness, Emergency Stop).
 - Hỗ trợ đa kịch bản (Multi-Script Profiles) với tổ hợp phím riêng cho từng kịch bản.
 - Bộ lắng nghe phím tắt toàn cục động (Dynamic GlobalHotKeys).
-- Quản lý thư viện kịch bản (Script Library Storage).
+- Quản lý thư viện kịch bản, sao chép chia sẻ kịch bản qua Clipboard / JSON.
 """
 
 import ctypes
@@ -533,7 +534,8 @@ class MacroStorage:
     def save_library(profiles: List[ScriptProfile], file_path: str, settings: Optional[Dict[str, Any]] = None):
         """Lưu toàn bộ thư viện nhiều kịch bản ra file JSON."""
         payload = {
-            "version": "0.4.1",
+            "version": "0.9.2",
+            "author": "Nhật Nam (@UIBreaker)",
             "updated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
             "settings": settings or {},
             "profiles": [p.to_dict() for p in profiles],
@@ -552,6 +554,35 @@ class MacroStorage:
         profiles = [ScriptProfile.from_dict(item) for item in raw_profiles]
         settings = data.get("settings", {})
         return profiles, settings
+
+    @staticmethod
+    def export_profile_to_string(profile: ScriptProfile) -> str:
+        """Đóng gói kịch bản thành chuỗi JSON gọn gàng để sao chép qua máy khác."""
+        payload = {
+            "smart_operation_macro": True,
+            "version": "0.9.2",
+            "author": "Nhật Nam (@UIBreaker)",
+            "profile": profile.to_dict(),
+        }
+        return json.dumps(payload, ensure_ascii=False, indent=2)
+
+    @staticmethod
+    def import_profile_from_string(text: str) -> Optional[ScriptProfile]:
+        """Khôi phục kịch bản từ chuỗi sao chép (Clipboard hoặc file)."""
+        try:
+            data = json.loads(text.strip())
+            if isinstance(data, dict):
+                if "profile" in data:
+                    p = ScriptProfile.from_dict(data["profile"])
+                    p.id = str(uuid.uuid4())[:8]  # Đổi ID mới tránh trùng lặp
+                    return p
+                elif "actions" in data:
+                    p = ScriptProfile.from_dict(data)
+                    p.id = str(uuid.uuid4())[:8]
+                    return p
+        except Exception:
+            pass
+        return None
 
 
 # ==========================================
