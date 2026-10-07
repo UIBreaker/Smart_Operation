@@ -1,0 +1,58 @@
+{
+  "version": "1.0",
+  "created_at": "2026-10-07 10:00:00",
+  "metadata": {
+    "description": "Kịch bản mẫu tham khảo cho phần mềm HIS (Ký số & Kết thúc khám)"
+  },
+  "total_actions": 6,
+  "actions": [
+    {
+      "action_type": "mouse_click",
+      "delay": 0.5,
+      "x": 420,
+      "y": 310,
+      "button": "left",
+      "pressed": true
+    },
+    {
+      "action_type": "mouse_click",
+      "delay": 0.05,
+      "x": 420,
+      "y": 310,
+      "button": "left",
+      "pressed": false
+    },
+    {
+      "action_type": "mouse_click",
+      "delay": 0.8,
+      "x": 860,
+      "y": 620,
+      "button": "left",
+      "pressed": true
+    },
+    {
+      "action_type": "mouse_click",
+      "delay": 0.05,
+      "x": 860,
+      "y": 620,
+      "button": "left",
+      "pressed": false
+    },
+    {
+      "action_type": "mouse_click",
+      "delay": 1.5,
+      "x": 980,
+      "y": 720,
+      "button": "left",
+      "pressed": true
+    },
+    {
+      "action_type": "mouse_click",
+      "delay": 0.05,
+      "x": 980,
+      "y": 720,
+      "button": "left",
+      "pressed": false
+    }
+  ]
+}
