@@ -1,5 +1,5 @@
 """
-Smart Operation - Core Engine (v0.9.2)
+Smart Operation - Core Engine (v0.10.2)
 Tác giả: Nhật Nam (GitHub: @UIBreaker)
 Chịu trách nhiệm:
 - Ghi và phát lại chuột/bàn phím (DPI Awareness, Emergency Stop).
@@ -534,7 +534,7 @@ class MacroStorage:
     def save_library(profiles: List[ScriptProfile], file_path: str, settings: Optional[Dict[str, Any]] = None):
         """Lưu toàn bộ thư viện nhiều kịch bản ra file JSON."""
         payload = {
-            "version": "0.9.2",
+            "version": "0.10.2",
             "author": "Nhật Nam (@UIBreaker)",
             "updated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
             "settings": settings or {},
@@ -560,7 +560,7 @@ class MacroStorage:
         """Đóng gói kịch bản thành chuỗi JSON gọn gàng để sao chép qua máy khác."""
         payload = {
             "smart_operation_macro": True,
-            "version": "0.9.2",
+            "version": "0.10.2",
             "author": "Nhật Nam (@UIBreaker)",
             "profile": profile.to_dict(),
         }
@@ -638,6 +638,21 @@ class MacroManager:
 
     def set_active_profile(self, profile_id: str):
         self.active_profile_id = profile_id
+
+    def delete_profile(self, profile_id: str) -> bool:
+        """Xóa kịch bản khỏi thư viện (đảm bảo luôn giữ ít nhất 1 kịch bản)."""
+        if len(self.profiles) <= 1:
+            return False
+        idx = next((i for i, p in enumerate(self.profiles) if p.id == profile_id), -1)
+        if idx == -1:
+            return False
+        self.profiles.pop(idx)
+        if self.active_profile_id == profile_id:
+            new_idx = min(idx, len(self.profiles) - 1)
+            self.active_profile_id = self.profiles[new_idx].id
+        self.save_library()
+        self.reload_global_hotkeys()
+        return True
 
     def load_library(self):
         loaded_profiles, settings = MacroStorage.load_library(self.library_path)

@@ -1,14 +1,15 @@
 """
-Smart Operation - Vintage Hardware Console Edition (v0.9.2)
+Smart Operation - Vintage Hardware Console Edition (v0.10.2)
 Tác giả: Nhật Nam (GitHub: @UIBreaker)
 
-Tính năng nổi bật v0.9.2:
+Tính năng nổi bật v0.10.2:
+- Thêm tính năng Xóa kịch bản (Delete Profile) linh hoạt từ thanh điều khiển hoặc trực tiếp trên từng thẻ kịch bản với xác nhận an toàn.
 - Bố cục danh sách kịch bản (Script Deck) đẹp mắt, trực quan, dễ quản lý.
 - Thông báo Windows Toast thời gian thực cho mọi sự kiện:
   + Bắt đầu học thao tác
   + Dừng học & lưu thao tác
   + Dừng khẩn cấp (Panic Stop)
-  + Xóa sạch các bước
+  + Xóa sạch các bước / Xóa kịch bản
   + Bắt đầu chạy kịch bản
   + Hoàn thành kịch bản
 - Tính năng Sao chép & Dán kịch bản (Copy/Paste Script qua Clipboard) để chia sẻ siêu tốc giữa các máy tính.
@@ -214,7 +215,7 @@ class Retro3DButton(tk.Canvas):
 class SmartOperationApp:
     def __init__(self, root: tk.Tk):
         self.root = root
-        self.root.title("SMART OPERATION // by Nhật Nam (@UIBreaker) [v0.9.2]")
+        self.root.title("SMART OPERATION // by Nhật Nam (@UIBreaker) [v0.10.2]")
         self.root.geometry("920x820")
         self.root.minsize(860, 720)
         self.root.configure(bg=VINTAGE_BG)
@@ -349,7 +350,7 @@ class SmartOperationApp:
 
         tk.Label(
             header_left,
-            text="by Nhật Nam (@UIBreaker) // v0.9.2",
+            text="by Nhật Nam (@UIBreaker) // v0.10.2",
             font=("Segoe UI", 9, "bold"),
             bg=VINTAGE_BG,
             fg=VINTAGE_TEXT_MUTED,
@@ -419,7 +420,8 @@ class SmartOperationApp:
             fg=VINTAGE_TEXT_HEAD,
         ).pack(side=tk.LEFT)
 
-        # Nút Sao chép kịch bản & Dán kịch bản để gửi qua máy khác
+        # Nút chức năng quản lý kịch bản: Xóa, Sao chép, Dán, Tạo mới
+        Retro3DButton(deck_top, text="🗑️ XÓA", width=80, height=28, top_color=BTN_RED_TOP, bot_color=BTN_RED_BOT, text_color=BTN_RED_TXT, command=self._cmd_delete_active_profile).pack(side=tk.RIGHT, padx=3)
         Retro3DButton(deck_top, text="📋 SAO CHÉP MÃ", width=110, height=28, top_color=BTN_YELLOW_TOP, bot_color=BTN_YELLOW_BOT, text_color=BTN_YELLOW_TXT, command=self._cmd_copy_script).pack(side=tk.RIGHT, padx=3)
         Retro3DButton(deck_top, text="📥 DÁN KỊCH BẢN", width=110, height=28, top_color=BTN_GREEN_TOP, bot_color=BTN_GREEN_BOT, text_color=BTN_GREEN_TXT, command=self._cmd_paste_script).pack(side=tk.RIGHT, padx=3)
         Retro3DButton(deck_top, text="+ TẠO MỚI", width=85, height=28, top_color=BTN_BLUE_TOP, bot_color=BTN_BLUE_BOT, text_color=BTN_BLUE_TXT, command=self._cmd_add_profile).pack(side=tk.RIGHT, padx=3)
@@ -580,7 +582,7 @@ class SmartOperationApp:
         # Thông tin tác giả ở chân trang
         tk.Label(
             stats_bar,
-            text="Tác giả: Nhật Nam (GitHub: @UIBreaker) │ Phiên bản: v0.9.2",
+            text="Tác giả: Nhật Nam (GitHub: @UIBreaker) │ Phiên bản: v0.10.2",
             font=("Segoe UI", 8, "bold"),
             bg=VINTAGE_CARD_BG,
             fg=VINTAGE_TEXT_MUTED,
@@ -626,7 +628,7 @@ class SmartOperationApp:
         self.tray_icon = pystray.Icon(
             "SmartOperation",
             icon_img,
-            "Smart Operation v0.9.2 - Nhật Nam (@UIBreaker)",
+            "Smart Operation v0.10.2 - Nhật Nam (@UIBreaker)",
             tray_menu,
         )
 
@@ -636,7 +638,7 @@ class SmartOperationApp:
         """Ẩn cửa sổ xuống khay hệ thống."""
         self.root.withdraw()
         self.notify_windows(
-            "Smart Operation (v0.9.2)",
+            "Smart Operation (v0.10.2)",
             "Ứng dụng đã thu nhỏ xuống khay hệ thống! Phím tắt kích hoạt vẫn hoạt động bình thường trong nền."
         )
 
@@ -717,7 +719,7 @@ class SmartOperationApp:
         author_box = tk.Frame(card, bg=VINTAGE_INNER_GROOVE, padx=8, pady=6)
         author_box.pack(fill=tk.X, pady=(4, 8))
         tk.Label(author_box, text="👤 Tác giả: Nhật Nam (GitHub: @UIBreaker)", font=("Segoe UI", 9, "bold"), bg=VINTAGE_INNER_GROOVE, fg=VINTAGE_TEXT_HEAD).pack(anchor="w")
-        tk.Label(author_box, text="Smart Operation v0.9.2 - Tự động hóa y tế & văn phòng", font=("Segoe UI", 8), bg=VINTAGE_INNER_GROOVE, fg=VINTAGE_TEXT_MUTED).pack(anchor="w")
+        tk.Label(author_box, text="Smart Operation v0.10.2 - Tự động hóa y tế & văn phòng", font=("Segoe UI", 8), bg=VINTAGE_INNER_GROOVE, fg=VINTAGE_TEXT_MUTED).pack(anchor="w")
 
         def _save():
             new_rec = entry_rec.get().strip().upper()
@@ -814,13 +816,26 @@ class SmartOperationApp:
             lbl_cnt.pack(side=tk.LEFT)
             _bind_click(lbl_cnt)
 
-            # Nút đổi phím tắt & xóa nhỏ
+            # Nút xóa kịch bản nhỏ
+            btn_mini_del = tk.Button(
+                info_row,
+                text="🗑️",
+                font=("Segoe UI", 7),
+                bg=card_bg,
+                relief=tk.FLAT,
+                cursor="hand2",
+                command=lambda pid=p.id: self._cmd_delete_profile(pid),
+            )
+            btn_mini_del.pack(side=tk.RIGHT, padx=1)
+
+            # Nút đổi phím tắt & sửa tên nhỏ
             btn_mini_hk = tk.Button(
                 info_row,
                 text="✏️",
                 font=("Segoe UI", 7),
-                bg=VINTAGE_CARD_BG,
+                bg=card_bg,
                 relief=tk.FLAT,
+                cursor="hand2",
                 command=lambda pid=p.id: self._cmd_quick_edit_profile(pid),
             )
             btn_mini_hk.pack(side=tk.RIGHT, padx=1)
@@ -881,6 +896,46 @@ class SmartOperationApp:
                 self.manager.reload_global_hotkeys()
                 self._refresh_profile_deck()
                 break
+
+    def _cmd_delete_active_profile(self):
+        """Xóa kịch bản hiện đang được chọn từ thanh điều khiển Deck."""
+        active = self.manager.get_active_profile()
+        if active:
+            self._cmd_delete_profile(active.id)
+
+    def _cmd_delete_profile(self, profile_id: str):
+        """Xóa kịch bản với kiểm tra an toàn và thông báo Windows Toast."""
+        if len(self.manager.profiles) <= 1:
+            messagebox.showwarning(
+                "Không thể xóa",
+                "Không thể xóa kịch bản duy nhất còn lại!\nThư viện cần có ít nhất 1 kịch bản để hoạt động.",
+                parent=self.root,
+            )
+            return
+
+        target = next((p for p in self.manager.profiles if p.id == profile_id), None)
+        if not target:
+            return
+
+        confirm = messagebox.askyesno(
+            "Xác nhận xóa kịch bản",
+            f"Bạn có chắc chắn muốn xóa kịch bản:\n\n"
+            f"• Tên: '{target.name}'\n"
+            f"• Phím tắt: [{target.hotkey}]\n"
+            f"• Số bước: {len(target.actions)} thao tác\n\n"
+            f"Thao tác này sẽ xóa vĩnh viễn kịch bản khỏi thư viện!",
+            parent=self.root,
+        )
+        if not confirm:
+            return
+
+        deleted_name = target.name
+        if self.manager.delete_profile(profile_id):
+            self._refresh_profile_deck()
+            self.notify_windows(
+                "🗑️ Đã xóa kịch bản",
+                f"Đã xóa kịch bản '{deleted_name}' khỏi thư viện.",
+            )
 
     # ==========================================
     # SAO CHÉP & DÁN KỊCH BẢN QUA CLIPBOARD (GỬI QUA MÁY KHÁC)

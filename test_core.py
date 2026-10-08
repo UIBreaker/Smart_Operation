@@ -208,6 +208,44 @@ def test_export_import_profile_string():
     print("   [PASS] Sao chép & khôi phục kịch bản chính xác 100%.")
 
 
+def test_delete_profile():
+    print("-> Kiểm tra tính năng xóa kịch bản (Delete Profile)...")
+    from core import MacroManager, ScriptProfile
+    tmp_path = "test_del_library.json"
+    if os.path.exists(tmp_path):
+        os.remove(tmp_path)
+    try:
+        mgr = MacroManager(library_path=tmp_path)
+        # Ban đầu có 1 profile mẫu mặc định
+        assert len(mgr.profiles) == 1
+        # Thử xóa khi chỉ có 1 profile -> phải trả về False (bảo vệ an toàn)
+        assert mgr.delete_profile(mgr.profiles[0].id) is False
+        assert len(mgr.profiles) == 1
+
+        # Thêm 2 profile nữa
+        p2 = ScriptProfile(name="Kịch bản 2", hotkey="F10", actions=[])
+        p3 = ScriptProfile(name="Kịch bản 3", hotkey="F11", actions=[])
+        mgr.profiles.extend([p2, p3])
+        assert len(mgr.profiles) == 3
+
+        # Đặt active là p2 và xóa p2
+        mgr.set_active_profile(p2.id)
+        assert mgr.get_active_profile().id == p2.id
+        ok = mgr.delete_profile(p2.id)
+        assert ok is True
+        assert len(mgr.profiles) == 2
+        # Profile active phải tự động chuyển sang profile hợp lệ khác
+        assert mgr.active_profile_id != p2.id
+        assert mgr.get_active_profile() is not None
+
+        # Xóa ID không tồn tại -> False
+        assert mgr.delete_profile("non_existent_id") is False
+        print("   [PASS] Tính năng xóa kịch bản hoạt động chính xác và an toàn.")
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+
+
 if __name__ == "__main__":
     print("================ BẮT ĐẦU KIỂM THỬ CORE ENGINE ================")
     test_key_serialization()
@@ -219,4 +257,5 @@ if __name__ == "__main__":
     test_script_profile_library()
     test_export_import_profile_string()
     test_macro_manager_state_machine()
+    test_delete_profile()
     print("================ TẤT CẢ KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG! ================")
